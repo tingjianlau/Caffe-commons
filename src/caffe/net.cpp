@@ -26,7 +26,7 @@ Net<Dtype>::Net(const NetParameter& param, const Net* root_net)
     : root_net_(root_net) {
   if(MY_DEBUG)
     LOG(INFO) << "调用Net构造函数成功";
-  // 调用Init初始化网络
+  // 调用Init()初始化网络
   Init(param);
 }
 
