@@ -1,0 +1,171 @@
+name: "LeNet"
+layer {
+  name: "mnist"
+  type: "Data"
+   # finally, this layer produces two blobs, one is the data blob, and one is the label bolb
+  top: "data"
+  top: "label"
+  include {
+    phase: TRAIN
+  }
+  transform_param {
+      #scale the incoming pixels so that they are in the range [0,1).the param is equal to 1 divided by 256
+    scale: 0.00390625
+  }
+  data_param {
+    source: "examples/mnist/mnist_train_lmdb"
+    batch_size: 64
+    backend: LMDB
+  }
+}
+layer {
+  name: "mnist"
+  type: "Data"
+  top: "data"
+  top: "label"
+  include {
+    phase: TEST
+  }
+  transform_param {
+    scale: 0.00390625
+  }
+  data_param {
+    source: "examples/mnist/mnist_test_lmdb"
+    batch_size: 100
+    backend: LMDB
+  }
+}
+layer {
+  name: "conv1"
+  type: "Convolution"
+   # the data blob is provided by the data layer
+  bottom: "data"
+  top: "conv1"
+  param {		# lr_mults are the learning rate adjustments for the layer's learnable parameters
+    lr_mult: 1	# set the weight learning rate to the same as the learning rate given by the solver during runtime
+  }
+  param {
+    lr_mult: 2	# set the bias learning rate to be twice as large as that -this usually leads to better convergence rates
+  }
+  convolution_param {
+    num_output: 20	#the conv1 layer produces output of 20 channels ????
+    kernel_size: 5
+    stride: 1
+    weight_filler {
+      type: "xavier" 	#a type of algorithm that allow us to randomly initialize the value of the weight
+    }
+    bias_filler {
+      type: "constant"	# simply initialize it as constant with the default filling value 0
+    }
+  }
+}
+layer {
+  name: "pool1"
+  type: "Pooling"
+  bottom: "conv1"
+  top: "pool1"
+  pooling_param {
+    pool: MAX
+    kernel_size: 2
+    stride: 2	# so no overlapping between neighboring pooling regions
+  }
+}
+layer {
+  name: "conv2"
+  type: "Convolution"
+  bottom: "pool1"
+  top: "conv2"
+  param {
+    lr_mult: 1
+  }
+  param {
+    lr_mult: 2
+  }
+  convolution_param {
+    num_output: 50
+    kernel_size: 5
+    stride: 1
+    weight_filler {
+      type: "xavier"
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+}
+layer {
+  name: "pool2"
+  type: "Pooling"
+  bottom: "conv2"
+  top: "pool2"
+  pooling_param {
+    pool: MAX
+    kernel_size: 2
+    stride: 2
+  }
+}
+layer {	# the Fully Connected Layer (known in Caffe as an InnerProduct layer)
+  name: "ip1"
+  type: "InnerProduct"
+  bottom: "pool2"
+  top: "ip1"
+  param {
+    lr_mult: 1
+  }
+  param {
+    lr_mult: 2
+  }
+  inner_product_param {
+    num_output: 500
+    weight_filler {
+      type: "xavier"
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+}
+layer {	# the ReLU Layer
+  name: "relu1"
+  type: "ReLU"
+  bottom: "ip1"
+  top: "ip1"
+}
+layer {
+  name: "ip2"
+  type: "InnerProduct"
+  bottom: "ip1"
+  top: "ip2"
+  param {
+    lr_mult: 1
+  }
+  param {
+    lr_mult: 2
+  }
+  inner_product_param {
+    num_output: 10
+    weight_filler {
+      type: "xavier"
+    }
+    bias_filler {
+      type: "constant"
+    }
+  }
+}
+layer {
+  name: "accuracy"
+  type: "Accuracy"
+  bottom: "ip2"
+  bottom: "label"
+  top: "accuracy"
+  include {
+    phase: TEST
+  }
+}
+layer {
+  name: "loss"
+  type: "SoftmaxWithLoss"
+  bottom: "ip2"
+  bottom: "label"		# provided by the data layer
+  top: "loss"
+}
