@@ -56,11 +56,12 @@ class LRNLayer : public Layer<Dtype> {
   virtual void WithinChannelBackward(const vector<Blob<Dtype>*>& top,
       const vector<bool>& propagate_down, const vector<Blob<Dtype>*>& bottom);
 
-  int size_;
-  int pre_pad_;
-  Dtype alpha_;
-  Dtype beta_;
-  Dtype k_;
+  int size_; // 有两种表示，一是通道间归一化时表示求和的通道数，二是通道内归一化时表示求和区间的边长, default 5, 且只能是奇数
+  int pre_pad_; // 用于边缘的补零操作
+  Dtype alpha_; // 缩放因子,default 1
+  Dtype beta_; // 指数项, default 0.75
+  Dtype k_; // 默认1.0
+  // 下面四个变量定义了输入图像的尺寸信息
   int num_;
   int channels_;
   int height_;
