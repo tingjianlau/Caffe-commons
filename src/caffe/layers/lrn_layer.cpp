@@ -123,19 +123,21 @@ void LRNLayer<Dtype>::CrossChannelForward_cpu(
   // go through the images
   for (int n = 0; n < num_; ++n) { // 循环遍历每一个样本
     // compute the padded square y[i] = a[i]^2
-	//计算当前样本的bottom[0]的每个feature map中每个元素的平方，但前后pre_pad_个位置保持0
+	//计算当前样本的bottom[0]的每个feature map中每个元素的平方，但前后pre_pad_个FM保持0
     caffe_sqr(channels_ * height_ * width_,
         bottom_data + bottom[0]->offset(n),
         padded_square_data + padded_square.offset(0, pre_pad_));
     // Create the first channel scale y[i] = alpha*x[i] + y[i]
-	// 计算第一批size_个相邻的feature map的对应每个元素乘以因子后的累加和，并在加上scale_中对应的值，最后得到的值存储中scale_中，即完成公式中k_+sum_under_i(x_i^2)的计算
+	// 计算第一批size_个相邻的feature map(即padded_square中相邻的第0个到第size_个FM)的对应每个元素乘以因子后的累加和
+	// 并加上scale_中对应的值，最后得到的值存储中scale_中
+	// 即完成公式中k_+sum_under_i(x_i^2)的计算
     for (int c = 0; c < size_; ++c) {
       caffe_axpy<Dtype>(height_ * width_, alpha_over_size,
           padded_square_data + padded_square.offset(0, c),
           scale_data + scale_.offset(n, 0));
     }
 	// 这里使用了类似FIFO的形式计算其余scale_参数，
-	// 每次先复制上一次计算的size_个相邻的feature map的结果，假设此时这size_个相邻的feature map的最后一个的标号是Index
+	// 每次先复制上一次计算的padded_square的size_个相邻的feature map的结果，假设此时这size_个相邻的feature map的最后一个的标号是Index
 	// 然后再加上第index+1个feature map的相应处理后的值
 	// 最后减去上一次求和计算中的第一个feature map的值,即第index-size_+1个feature map的值
 	// 以上三步操作，完成计算的是LRN层按顺序输出的一个feature map，所以需要for循环channels_1次
@@ -157,7 +159,7 @@ void LRNLayer<Dtype>::CrossChannelForward_cpu(
 
   // In the end, compute output 完成最后的开根和求墒的操作, 并存入top[0]中
   caffe_powx<Dtype>(scale_.count(), scale_data, -beta_, top_data);
-  caffe_mul<Dtype>(scale_.count(), top_data, bottom_data, top_data);
+  caffe_mul<Dtype>(scale_.count(), top_data, bottom_data, top_data); // 矩阵乘法
 }
 
 template <typename Dtype>
@@ -203,6 +205,7 @@ void LRNLayer<Dtype>::CrossChannelBackward_cpu(
   caffe_set(padded_ratio.count(), Dtype(0), padded_ratio_data);
   Dtype cache_ratio_value = 2. * alpha_ * beta_ / size_;
 
+  // compute s_i^-b * diff_i
   caffe_powx<Dtype>(scale_.count(), scale_data, -beta_, bottom_diff);
   caffe_mul<Dtype>(scale_.count(), top_diff, bottom_diff, bottom_diff);
 
@@ -232,6 +235,8 @@ void LRNLayer<Dtype>::CrossChannelBackward_cpu(
       caffe_mul<Dtype>(height_ * width_,
           bottom_data + top[0]->offset(n, c),
           accum_ratio_data, accum_ratio_times_bottom);
+	  // the whole formula: bottom_diff_i = s_i^-b*top_diff_i - (2*alpha*
+	  // beta/n) * a_i * sum(top_diff_j*b_j/s_j)
       caffe_axpy<Dtype>(height_ * width_, -cache_ratio_value,
           accum_ratio_times_bottom, bottom_diff + top[0]->offset(n, c));
       caffe_axpy<Dtype>(height_ * width_, -1.,

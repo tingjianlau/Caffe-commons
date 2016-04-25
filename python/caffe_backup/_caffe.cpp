@@ -26,7 +26,6 @@
 #define PyArray_SetBaseObject(arr, x) (PyArray_BASE(arr) = (x))
 #endif
 
-// 通过Boost.Python可以在Python内使用C++类和函数
 namespace bp = boost::python;
 
 namespace caffe {
@@ -210,21 +209,16 @@ bp::object BlobVec_add_blob(bp::tuple args, bp::dict kwargs) {
 
 BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(SolveOverloads, Solve, 0, 1);
 
-// 通过使用BOOST_PYTHON_MODULE来命名模块名
 BOOST_PYTHON_MODULE(_caffe) {
   // below, we prepend an underscore to methods that will be replaced
   // in Python
   // Caffe utility functions
-  // 使用def来实现Python/C API定义的方法列表BOOST_PYTHON_MODULE
   bp::def("set_mode_cpu", &set_mode_cpu);
   bp::def("set_mode_gpu", &set_mode_gpu);
   bp::def("set_device", &Caffe::SetDevice);
 
   bp::def("layer_type_list", &LayerRegistry<Dtype>::LayerTypeList);
 
-  // 将C++中定义的类及其方法属性等导入到python中
-  // 使用关键字class_导入C++中Net类及其方法属性
-  // 使用add_property将C++中的操作函数设置为Python类中的属性
   bp::class_<Net<Dtype>, shared_ptr<Net<Dtype> >, boost::noncopyable >("Net",
     bp::no_init)
     .def("__init__", bp::make_constructor(&Net_Init))
@@ -254,11 +248,6 @@ BOOST_PYTHON_MODULE(_caffe) {
     .def("_set_input_arrays", &Net_SetInputArrays,
         bp::with_custodian_and_ward<1, 2, bp::with_custodian_and_ward<1, 3> >())
     .def("save", &Net_Save);
-
-  // Fix for caffe pythonwrapper for boost 1.6
-  boost::python::register_ptr_to_python<boost::shared_ptr<Blob<Dtype> > >();
-  boost::python::register_ptr_to_python<boost::shared_ptr<Net<Dtype> > >();
-  // End fix
 
   bp::class_<Blob<Dtype>, shared_ptr<Blob<Dtype> >, boost::noncopyable>(
     "Blob", bp::no_init)
